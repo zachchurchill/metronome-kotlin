@@ -56,10 +56,13 @@ class MainActivity : AppCompatActivity() {
 
         metronomeToggle.setOnCheckedChangeListener { _, isChecked ->
             metronomeState = if (isChecked) MetronomeState.On else MetronomeState.Off
+
+            Log.i("metronomeToggle", "Metronome State: $metronomeState")
+
             updateBpmButtons()
 
             if (isChecked) {
-                startMetronome(round(1000 / (round(getCurrentBpm().toDouble() / 60))).toLong())
+                startMetronome((1000 / (getCurrentBpm().toDouble() / 60)).toLong())
             } else {
                 stopMetronome()
             }
@@ -98,11 +101,13 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun startMetronome(sleepDuration: Long) {
+        Log.i("startMetronome", "Starting metronome with sleep duration: $sleepDuration")
         metronome = Timer("metronome", false)
         metronome.scheduleAtFixedRate(MetronomeTimerTask(),0L, sleepDuration)
     }
 
     private fun stopMetronome() {
+        Log.i("stopMetronome", "Stopping metronome")
         metronome.cancel()
     }
 
