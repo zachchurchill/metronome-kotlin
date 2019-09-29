@@ -1,0 +1,7 @@
+<resources>
+    <string name="app_name">Metronome</string>
+    <string name="current_bpm">60</string>
+    <string name="increase_bpm">Increase</string>
+    <string name="decrease_bpm">Decrease</string>
+    <string name="metronome_toggle">Metronome Toggle</string>
+</resources>
