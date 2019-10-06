@@ -6,16 +6,10 @@ import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
 import android.os.Handler
 import android.util.Log
-import android.view.KeyEvent
 import android.view.MotionEvent
-import android.view.View
-import android.widget.Button
 import android.widget.EditText
-import android.widget.Toast
-import android.widget.ToggleButton
 import kotlinx.android.synthetic.main.activity_main.*
 import java.util.*
-import kotlin.math.round
 
 class MetronomeTimerTask : TimerTask() {
     private val metronomeClick = ToneGenerator(AudioManager.STREAM_MUSIC, 100)
@@ -62,8 +56,12 @@ class MainActivity : AppCompatActivity() {
             updateBpmButtons()
 
             if (isChecked) {
+                metronomeToggle.setBackgroundResource(R.drawable.btn_toggled_on_background)
+                metronomeToggle.setTextColor(getColor(R.color.secondaryTextColor))
                 startMetronome((1000 / (getCurrentBpm().toDouble() / 60)).toLong())
             } else {
+                metronomeToggle.setBackgroundResource(R.drawable.btn_toggled_off_background)
+                metronomeToggle.setTextColor(getColor(R.color.primaryTextColor))
                 stopMetronome()
             }
         }
