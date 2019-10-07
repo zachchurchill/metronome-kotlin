@@ -5,8 +5,11 @@ import android.media.ToneGenerator
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
 import android.os.Handler
+import android.text.Editable
+import android.text.TextWatcher
 import android.util.Log
 import android.view.MotionEvent
+import android.view.inputmethod.EditorInfo
 import android.widget.EditText
 import kotlinx.android.synthetic.main.activity_main.*
 import java.util.*
@@ -48,6 +51,42 @@ class MainActivity : AppCompatActivity() {
             }
         }
 
+        currentBPM.setOnTouchListener {_, _ ->
+            currentBPM.isCursorVisible = true
+            false
+        }
+
+        currentBPM.setOnEditorActionListener { _, keyCode: Int?, _ ->
+
+            if (keyCode == EditorInfo.IME_ACTION_DONE) {
+                currentBPM.isCursorVisible = false
+            }
+
+            false
+        }
+
+        currentBPM.addTextChangedListener(object: TextWatcher {
+            override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {
+
+            }
+
+            override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {
+
+            }
+
+            override fun afterTextChanged(s: Editable?) {
+                if (!s.isNullOrBlank() || !s.isNullOrEmpty()) {
+                    val currentBpm = getCurrentBpm()
+                    if (currentBpm == null || !checkBpmBounds(currentBpm)) {
+                        currentBPM.error = "BPM must be between 40 and 360"
+                        metronomeToggle.isEnabled = false
+                    } else {
+                        metronomeToggle.isEnabled = true
+                    }
+                }
+            }
+        })
+
         metronomeToggle.setOnCheckedChangeListener { _, isChecked ->
             metronomeState = if (isChecked) MetronomeState.On else MetronomeState.Off
 
@@ -56,9 +95,13 @@ class MainActivity : AppCompatActivity() {
             updateBpmButtons()
 
             if (isChecked) {
-                metronomeToggle.setBackgroundResource(R.drawable.btn_toggled_on_background)
-                metronomeToggle.setTextColor(getColor(R.color.secondaryTextColor))
-                startMetronome((1000 / (getCurrentBpm().toDouble() / 60)).toLong())
+                val currentBpm = getCurrentBpm()
+                if (currentBpm != null && checkBpmBounds(currentBpm)) {
+                    metronomeToggle.setBackgroundResource(R.drawable.btn_toggled_on_background)
+                    metronomeToggle.setTextColor(getColor(R.color.secondaryTextColor))
+
+                    startMetronome((1000 / (currentBpm.toDouble() / 60)).toLong())
+                }
             } else {
                 metronomeToggle.setBackgroundResource(R.drawable.btn_toggled_off_background)
                 metronomeToggle.setTextColor(getColor(R.color.primaryTextColor))
@@ -94,8 +137,18 @@ class MainActivity : AppCompatActivity() {
 
     }
 
-    private fun getCurrentBpm(): Int {
-        return findViewById<EditText>(R.id.currentBPM).text.toString().toInt()
+    private fun getCurrentBpm(): Int? {
+        val currentBpmEditText = findViewById<EditText>(R.id.currentBPM)
+
+        if (currentBpmEditText.text.isNotEmpty()) {
+            return currentBpmEditText.text.toString().toInt()
+        }
+
+        return null
+    }
+
+    private fun checkBpmBounds(bpm: Int): Boolean {
+        return (bpm in 40..360)
     }
 
     private fun startMetronome(sleepDuration: Long) {
@@ -112,10 +165,12 @@ class MainActivity : AppCompatActivity() {
     private fun updateBpmButtons() {
         when (metronomeState) {
             MetronomeState.Off -> {
+                currentBPM.isEnabled = true
                 increaseBPM.isEnabled = true
                 decreaseBPM.isEnabled = true
             }
             MetronomeState.On -> {
+                currentBPM.isEnabled = false
                 increaseBPM.isEnabled = false
                 decreaseBPM.isEnabled = false
             }
@@ -123,18 +178,18 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun increaseBPM() {
-        val increasedBpmValue = getCurrentBpm() + 1
+        val currentBpm = getCurrentBpm()
 
-        if (increasedBpmValue <= 360) {
-            currentBPM.setText(increasedBpmValue.toString())
+        if (currentBpm != null && currentBpm < 360) {
+            currentBPM.setText((currentBpm + 1).toString())
         }
     }
 
     private fun decreaseBPM() {
-        val decreasedBpmValue = getCurrentBpm() - 1
+        val currentBpm = getCurrentBpm()
 
-        if (decreasedBpmValue >= 40) {
-            currentBPM.setText(decreasedBpmValue.toString())
+        if (currentBpm != null && currentBpm > 40) {
+            currentBPM.setText((currentBpm - 1).toString())
         }
     }
 }

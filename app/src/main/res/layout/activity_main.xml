@@ -24,8 +24,9 @@
             app:layout_constraintHorizontal_bias="0.5"
             app:layout_constraintBottom_toTopOf="@id/increaseBPM"
             android:layout_marginTop="16dp"
-            android:enabled="false"
-            android:textColor="@color/colorAccent"/>
+            android:textColor="@color/colorAccent"
+            android:cursorVisible="false"
+            android:imeOptions="actionDone" />
     <Button
             android:text="@string/increase_bpm"
             android:layout_width="wrap_content"
