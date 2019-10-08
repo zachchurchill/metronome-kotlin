@@ -26,7 +26,7 @@
             android:layout_marginTop="16dp"
             android:textColor="@color/colorAccent"
             android:cursorVisible="false"
-            android:imeOptions="actionDone" />
+            android:imeOptions="actionDone" android:hint="@string/beats_per_minute"/>
     <Button
             android:text="@string/increase_bpm"
             android:layout_width="135dp"

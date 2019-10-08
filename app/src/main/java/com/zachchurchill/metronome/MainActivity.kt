@@ -168,11 +168,19 @@ class MainActivity : AppCompatActivity() {
                 currentBPM.isEnabled = true
                 increaseBPM.isEnabled = true
                 decreaseBPM.isEnabled = true
+
+                currentBPM.setTextColor(getColor(R.color.colorAccent))
+                increaseBPM.setBackgroundResource(R.drawable.btn_dark_background)
+                decreaseBPM.setBackgroundResource(R.drawable.btn_dark_background)
             }
             MetronomeState.On -> {
                 currentBPM.isEnabled = false
                 increaseBPM.isEnabled = false
                 decreaseBPM.isEnabled = false
+
+                currentBPM.setTextColor(getColor(R.color.colorAccent50Percent))
+                increaseBPM.setBackgroundResource(R.drawable.btn_disabled_background)
+                decreaseBPM.setBackgroundResource(R.drawable.btn_disabled_background)
             }
         }
     }
