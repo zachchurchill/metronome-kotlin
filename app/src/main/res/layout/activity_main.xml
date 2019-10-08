@@ -29,7 +29,7 @@
             android:imeOptions="actionDone" />
     <Button
             android:text="@string/increase_bpm"
-            android:layout_width="wrap_content"
+            android:layout_width="135dp"
             android:layout_height="wrap_content"
             android:id="@+id/increaseBPM"
             app:layout_constraintStart_toStartOf="parent"
@@ -40,10 +40,10 @@
             app:layout_constraintHorizontal_chainStyle="spread"
             app:layout_constraintBaseline_toBaselineOf="@id/decreaseBPM"
             android:background="@drawable/btn_dark_background"
-            android:textColor="@color/primaryTextColor" />
+            android:textColor="@color/primaryTextColor"/>
     <Button
             android:text="@string/decrease_bpm"
-            android:layout_width="wrap_content"
+            android:layout_width="135dp"
             android:layout_height="wrap_content"
             android:id="@+id/decreaseBPM"
             app:layout_constraintStart_toEndOf="@+id/increaseBPM"
@@ -52,7 +52,7 @@
             app:layout_constraintTop_toBottomOf="@+id/currentBPM"
             app:layout_constraintBottom_toTopOf="@id/metronomeToggle"
             android:background="@drawable/btn_dark_background"
-            android:textColor="@color/primaryTextColor" />
+            android:textColor="@color/primaryTextColor"/>
     <androidx.constraintlayout.widget.Guideline
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"

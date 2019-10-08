@@ -5,7 +5,7 @@
     <solid
         android:color="@color/black75Percent" />
 
-    <size android:height="100dp"
-          android:width="100dp" />
+    <size android:height="150dp"
+          android:width="150dp" />
 
 </shape>
