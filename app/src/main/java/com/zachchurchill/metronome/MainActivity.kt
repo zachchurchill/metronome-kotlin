@@ -2,25 +2,20 @@ package com.zachchurchill.metronome
 
 import android.media.AudioManager
 import android.media.ToneGenerator
+import java.util.Timer
+import kotlin.concurrent.timerTask
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
 import android.os.Handler
 import android.text.Editable
 import android.text.TextWatcher
-import android.util.Log
 import android.view.MotionEvent
 import android.view.inputmethod.EditorInfo
 import android.widget.EditText
+import android.util.Log
+
 import kotlinx.android.synthetic.main.activity_main.*
-import java.util.*
 
-class MetronomeTimerTask : TimerTask() {
-    private val metronomeClick = ToneGenerator(AudioManager.STREAM_MUSIC, 100)
-
-    override fun run() {
-        metronomeClick.startTone(ToneGenerator.TONE_CDMA_PIP, 50)
-    }
-}
 
 class MainActivity : AppCompatActivity() {
 
@@ -35,7 +30,7 @@ class MainActivity : AppCompatActivity() {
     private var repeatUpdateHandler: Handler = Handler()
     private var metronomeState = MetronomeState.Off
     private var lowerLimitBpm = 40
-    private var upperLimitBpm = 360
+    private var upperLimitBpm = 210
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -100,7 +95,7 @@ class MainActivity : AppCompatActivity() {
                     metronomeToggle.setBackgroundResource(R.drawable.btn_toggled_on_background)
                     metronomeToggle.setTextColor(getColor(R.color.secondaryTextColor))
 
-                    startMetronome((1000 / (currentBpm.toDouble() / 60)).toLong())
+                    startMetronome((1000 * (60 / currentBpm.toDouble())).toLong())
                 }
             } else {
                 metronomeToggle.setBackgroundResource(R.drawable.btn_toggled_off_background)
@@ -137,6 +132,23 @@ class MainActivity : AppCompatActivity() {
 
     }
 
+    private fun startMetronome(sleepDuration: Long) {
+        metronome = Timer("metronome", true)
+        metronome.schedule(
+            timerTask {
+                val toneGenerator = ToneGenerator(AudioManager.STREAM_MUSIC, 100)
+                toneGenerator.startTone(ToneGenerator.TONE_PROP_BEEP)
+                toneGenerator.release()
+            },
+            0L,
+            sleepDuration
+        )
+    }
+
+    private fun stopMetronome() {
+        metronome.cancel()
+    }
+
     private fun getCurrentBpm(): Int? {
         val currentBpmEditText = findViewById<EditText>(R.id.currentBPM)
 
@@ -151,17 +163,8 @@ class MainActivity : AppCompatActivity() {
         return (bpm in lowerLimit..upperLimit)
     }
 
-    private fun showCurrentBpmError(showError: Boolean) {
-        currentBPM.error = if (showError) "BPM must be between 40 and 360" else null
-    }
-
-    private fun startMetronome(sleepDuration: Long) {
-        metronome = Timer("metronome", false)
-        metronome.scheduleAtFixedRate(MetronomeTimerTask(),0L, sleepDuration)
-    }
-
-    private fun stopMetronome() {
-        metronome.cancel()
+    private fun showCurrentBpmError(showError: Boolean, lowerLimit: Int = lowerLimitBpm, upperLimit: Int = upperLimitBpm) {
+        currentBPM.error = if (showError) "BPM must be between $lowerLimit and $upperLimit" else null
     }
 
     private fun enableIncreaseBpm() {
