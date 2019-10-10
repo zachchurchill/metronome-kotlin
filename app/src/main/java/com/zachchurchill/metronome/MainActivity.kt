@@ -24,17 +24,21 @@ class MainActivity : AppCompatActivity() {
     }
 
     private lateinit var metronome: Timer
+    private lateinit var metronomeState: MetronomeState
+
     private var autoIncrement: Boolean = false
     private var autoDecrement: Boolean = false
     private val REPEAT_DELAY: Long = 50L
     private var repeatUpdateHandler: Handler = Handler()
-    private var metronomeState = MetronomeState.Off
     private var lowerLimitBpm = 40
     private var upperLimitBpm = 210
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
+
+        val savedMetronomeState = savedInstanceState?.getCharSequence("metronomeState")
+        metronomeState = if (savedMetronomeState != null && savedMetronomeState == "On") MetronomeState.On else MetronomeState.Off
 
         class RepetitiveUpdater : Runnable {
             override fun run() {
@@ -85,23 +89,9 @@ class MainActivity : AppCompatActivity() {
         })
 
         metronomeToggle.setOnCheckedChangeListener { _, isChecked ->
-            metronomeState = if (isChecked) MetronomeState.On else MetronomeState.Off
-
-            updateBpmButtons()
-
-            if (isChecked) {
-                val currentBpm = getCurrentBpm()
-                if (currentBpm != null && checkBpmBounds(currentBpm)) {
-                    metronomeToggle.setBackgroundResource(R.drawable.btn_toggled_on_background)
-                    metronomeToggle.setTextColor(getColor(R.color.secondaryTextColor))
-
-                    startMetronome((1000 * (60 / currentBpm.toDouble())).toLong())
-                }
-            } else {
-                metronomeToggle.setBackgroundResource(R.drawable.btn_toggled_off_background)
-                metronomeToggle.setTextColor(getColor(R.color.primaryTextColor))
-                stopMetronome()
-            }
+            Log.i("Metronome", "metronomeToggle | BEFORE metronomeState = $metronomeState")
+            updateMetronomeStatus(isChecked)
+            Log.i("Metronome", "metronomeToggle | AFTER metronomeState = $metronomeState")
         }
 
         increaseBPM.setOnClickListener { updateBPM(true) }
@@ -132,21 +122,58 @@ class MainActivity : AppCompatActivity() {
 
     }
 
+    override fun onStop() {
+        super.onStop()
+
+        if (metronomeState == MetronomeState.On) {
+            stopMetronome()
+        }
+
+        metronomeToggle.isChecked = false   // Quick fix to stop metronome from playing again
+    }
+
+    private fun updateMetronomeStatus(turnOn: Boolean) {
+        if (turnOn) {
+            val currentBpm = getCurrentBpm()
+            if (currentBpm != null && checkBpmBounds(currentBpm)) {
+                startMetronome((1000 * (60 / currentBpm.toDouble())).toLong())
+            }
+        } else {
+            stopMetronome()
+        }
+    }
+
     private fun startMetronome(sleepDuration: Long) {
-        metronome = Timer("metronome", true)
-        metronome.schedule(
-            timerTask {
-                val toneGenerator = ToneGenerator(AudioManager.STREAM_MUSIC, 100)
-                toneGenerator.startTone(ToneGenerator.TONE_PROP_BEEP)
-                toneGenerator.release()
-            },
-            0L,
-            sleepDuration
-        )
+        Log.i("Metronome", "startMetronome | BEFORE metronomeState = $metronomeState")
+        if (metronomeState == MetronomeState.Off) {
+            metronome = Timer("metronome", true)
+            metronome.schedule(
+                timerTask {
+                    val toneGenerator = ToneGenerator(AudioManager.STREAM_MUSIC, 100)
+                    toneGenerator.startTone(ToneGenerator.TONE_PROP_BEEP)
+                    toneGenerator.release()
+                },
+                0L,
+                sleepDuration
+            )
+
+            metronomeState = MetronomeState.On
+        }
+        Log.i("Metronome", "startMetronome | AFTER metronomeState = $metronomeState")
+
+        updateBpmButtons()
     }
 
     private fun stopMetronome() {
-        metronome.cancel()
+        Log.i("Metronome", "stopMetronome | BEFORE metronomeState = $metronomeState")
+        if (metronomeState == MetronomeState.On) {
+            metronome.cancel()
+
+            metronomeState = MetronomeState.Off
+        }
+        Log.i("Metronome", "stopMetronome | AFTER metronomeState = $metronomeState")
+
+        updateBpmButtons()
     }
 
     private fun getCurrentBpm(): Int? {
