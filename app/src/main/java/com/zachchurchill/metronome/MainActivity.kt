@@ -33,6 +33,10 @@ class MainActivity : AppCompatActivity() {
     private var lowerLimitBpm = 40
     private var upperLimitBpm = 210
 
+    private fun log_info(message: String) {
+        Log.i("Metronome", message)
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
@@ -76,45 +80,49 @@ class MainActivity : AppCompatActivity() {
             }
 
             override fun afterTextChanged(s: Editable?) {
-                if (!s.isNullOrBlank() || !s.isNullOrEmpty()) {
-                    val currentBpm = getCurrentBpm()
-                    if (currentBpm == null || !checkBpmBounds(currentBpm)) {
-                        showCurrentBpmError(currentBpm == null || !checkBpmBounds(currentBpm))
-                        metronomeToggle.isEnabled = false
-                    } else {
-                        metronomeToggle.isEnabled = true
-                    }
-                }
+                val currentBpm = getCurrentBpm()
+                showCurrentBpmError(currentBpm == null || !checkBpmBounds(currentBpm))
+                updateBpmButtons()
             }
         })
 
         metronomeToggle.setOnCheckedChangeListener { _, isChecked ->
-            Log.i("Metronome", "metronomeToggle | BEFORE metronomeState = $metronomeState")
+            log_info("metronomeToggle | BEFORE metronomeState = $metronomeState")
             updateMetronomeStatus(isChecked)
-            Log.i("Metronome", "metronomeToggle | AFTER metronomeState = $metronomeState")
+            log_info("metronomeToggle | AFTER metronomeState = $metronomeState")
         }
 
-        increaseBPM.setOnClickListener { updateBPM(true) }
+        increaseBPM.setOnClickListener {
+            log_info("setOnClickListener | Increasing BPM")
+            updateBPM(true)
+        }
         increaseBPM.setOnLongClickListener {
+            log_info("setOnLongClickListener | Increasing BPM until ACTION_UP")
             autoIncrement = true
             repeatUpdateHandler.post(RepetitiveUpdater())
             false
         }
         increaseBPM.setOnTouchListener { _, motionEvent ->
             if (motionEvent.action == MotionEvent.ACTION_UP && autoIncrement) {
+                log_info("setOnTouchListener | ACTION_UP triggered - Stop increasing BPM")
                 autoIncrement = false
             }
             false
         }
 
-        decreaseBPM.setOnClickListener { updateBPM(false) }
+        decreaseBPM.setOnClickListener {
+            log_info("setOnClickListener | Decreasing BPM")
+            updateBPM(false)
+        }
         decreaseBPM.setOnLongClickListener {
+            log_info("setOnLongClickListener | Decreasing BPM until ACTION_UP")
             autoDecrement = true
             repeatUpdateHandler.post(RepetitiveUpdater())
             false
         }
         decreaseBPM.setOnTouchListener { _, motionEvent ->
             if (motionEvent.action == MotionEvent.ACTION_UP && autoDecrement) {
+                log_info("setOnTouchListener | ACTION_UP triggered - Stop decreasing BPM")
                 autoDecrement = false
             }
             false
@@ -144,7 +152,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun startMetronome(sleepDuration: Long) {
-        Log.i("Metronome", "startMetronome | BEFORE metronomeState = $metronomeState")
+        log_info("startMetronome | BEFORE metronomeState = $metronomeState")
         if (metronomeState == MetronomeState.Off) {
             metronome = Timer("metronome", true)
             metronome.schedule(
@@ -159,19 +167,19 @@ class MainActivity : AppCompatActivity() {
 
             metronomeState = MetronomeState.On
         }
-        Log.i("Metronome", "startMetronome | AFTER metronomeState = $metronomeState")
+        log_info("startMetronome | AFTER metronomeState = $metronomeState")
 
         updateBpmButtons()
     }
 
     private fun stopMetronome() {
-        Log.i("Metronome", "stopMetronome | BEFORE metronomeState = $metronomeState")
+        log_info("stopMetronome | BEFORE metronomeState = $metronomeState")
         if (metronomeState == MetronomeState.On) {
             metronome.cancel()
 
             metronomeState = MetronomeState.Off
         }
-        Log.i("Metronome", "stopMetronome | AFTER metronomeState = $metronomeState")
+        log_info("stopMetronome | AFTER metronomeState = $metronomeState")
 
         updateBpmButtons()
     }
@@ -209,12 +217,34 @@ class MainActivity : AppCompatActivity() {
         currentBPM.setTextColor(getColor(R.color.colorAccent))
     }
 
+    private fun enableMetronomeToggle() {
+        metronomeToggle.isEnabled = true
+        when (metronomeState) {
+            MetronomeState.On -> {
+                metronomeToggle.setBackgroundResource(R.drawable.btn_toggled_on_background)
+                metronomeToggle.setTextColor(getColor(R.color.black75Percent))
+            }
+            MetronomeState.Off -> {
+                metronomeToggle.setBackgroundResource(R.drawable.btn_toggled_off_background)
+                metronomeToggle.setTextColor(getColor(R.color.primaryTextColor))
+            }
+        }
+    }
+
     private fun disableIncreaseBpm() {
+        if (autoIncrement) {
+            log_info("disableIncreaseBpm | IncreaseBPM button is disable - stop increasing BPM")
+            autoIncrement = false
+        }
         increaseBPM.isEnabled = false
         increaseBPM.setBackgroundResource(R.drawable.btn_disabled_background)
     }
 
     private fun disableDecreaseBpm() {
+        if (autoDecrement) {
+            log_info("disableDecreaseBpm | DecreaseBPM button is disable - stop decreasing BPM")
+            autoDecrement = false
+        }
         decreaseBPM.isEnabled = false
         decreaseBPM.setBackgroundResource(R.drawable.btn_disabled_background)
     }
@@ -224,18 +254,70 @@ class MainActivity : AppCompatActivity() {
         currentBPM.setTextColor(getColor(R.color.colorAccent50Percent))
     }
 
+    private fun disableMetronomeToggle() {
+        metronomeToggle.isEnabled = false
+        metronomeToggle.setBackgroundResource(R.drawable.btn_toggled_disabled_background)
+        metronomeToggle.setTextColor(getColor(R.color.primaryTextColor))
+    }
+
     private fun updateBpmButtons() {
-        when (metronomeState) {
-            MetronomeState.Off -> {
-                enableIncreaseBpm()
-                enableDecreaseBpm()
-                enableCurrentBpm()
+        val currentBpm = getCurrentBpm()
+
+        if (currentBpm == null) {
+            disableIncreaseBpm()
+            disableDecreaseBpm()
+            disableMetronomeToggle()
+        } else if (currentBpm < 40) {
+            enableIncreaseBpm()
+
+            disableDecreaseBpm()
+            disableMetronomeToggle()
+        } else if (currentBpm == 40) {
+            enableMetronomeToggle()
+            when (metronomeState) {
+                MetronomeState.Off -> {
+                    enableIncreaseBpm()
+                    disableDecreaseBpm()
+                    enableCurrentBpm()
+                }
+                MetronomeState.On -> {
+                    disableIncreaseBpm()
+                    disableDecreaseBpm()
+                    disableCurrentBpm()
+                }
             }
-            MetronomeState.On -> {
-                disableIncreaseBpm()
-                disableDecreaseBpm()
-                disableCurrentBpm()
+        } else if (currentBpm < 210) {
+            enableMetronomeToggle()
+            when (metronomeState) {
+                MetronomeState.Off -> {
+                    enableIncreaseBpm()
+                    enableDecreaseBpm()
+                    enableCurrentBpm()
+                }
+                MetronomeState.On -> {
+                    disableIncreaseBpm()
+                    disableDecreaseBpm()
+                    disableCurrentBpm()
+                }
             }
+        } else if (currentBpm == 210) {
+            enableMetronomeToggle()
+            when (metronomeState) {
+                MetronomeState.Off -> {
+                    disableIncreaseBpm()
+                    enableDecreaseBpm()
+                    enableCurrentBpm()
+                }
+                MetronomeState.On -> {
+                    disableIncreaseBpm()
+                    disableDecreaseBpm()
+                    disableCurrentBpm()
+                }
+            }
+        } else {
+            disableIncreaseBpm()
+            enableDecreaseBpm()
+            disableMetronomeToggle()
         }
     }
 
