@@ -2,6 +2,7 @@ package com.zachchurchill.metronome
 
 import android.media.AudioManager
 import android.media.ToneGenerator
+import java.util.Timer
 import kotlin.concurrent.timerTask
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
@@ -14,28 +15,32 @@ import android.widget.EditText
 import android.util.Log
 
 import kotlinx.android.synthetic.main.activity_main.*
-import java.util.*
+
 
 typealias BPM = Long
 
-const val MILLISECONDS_IN_SECONDS: Int = 1000
-const val SECONDS_IN_MINUTES: Int = 60
+const val MILLISECONDS_IN_SECOND: Int = 1000
+const val SECONDS_IN_MINUTE: Int = 60
 const val REPEAT_DELAY_FOR_LONG_CLICKS: Long = 50L
-const val METRONOME_TONE = ToneGenerator.TONE_PROP_BEEP
 const val METRONOME_LOWER_BOUND: BPM = 40
 const val METRONOME_UPPER_BOUND: BPM = 210
+
 
 enum class MetronomeState {
     OFF,
     ON
 }
 
+
 object Metronome {
-    var metronomeState: MetronomeState = MetronomeState.OFF
+    private const val metronomeTone = ToneGenerator.TONE_PROP_BEEP
+
+    var metronomeState: MetronomeState
     private var metronome: Timer
 
     init {
         metronome = Timer("metronome", true)
+        metronomeState = MetronomeState.OFF
     }
 
     private fun createNewTimer() {
@@ -45,37 +50,37 @@ object Metronome {
     }
 
     private fun calculateSleepDuration(bpm: BPM): Long {
-        return (MILLISECONDS_IN_SECONDS * (SECONDS_IN_MINUTES / bpm.toDouble())).toLong()
+        return (MILLISECONDS_IN_SECOND * (SECONDS_IN_MINUTE / bpm.toDouble())).toLong()
     }
 
     fun start(bpm: BPM): Boolean {
-        when (this.metronomeState) {
-            MetronomeState.OFF -> {
-                this.metronomeState = MetronomeState.ON
-                this.metronome.schedule(
-                    timerTask {
-                        val toneGenerator = ToneGenerator(AudioManager.STREAM_MUSIC, 100)
-                        toneGenerator.startTone(METRONOME_TONE)
-                        toneGenerator.release()
-                    },
-                    0L,
-                    calculateSleepDuration(bpm)
-                )
-            }
-            MetronomeState.ON -> return false
+        if (this.isOn()) {
+            return false
         }
+
+        this.metronomeState = MetronomeState.ON
+        this.metronome.schedule(
+            timerTask {
+                val toneGenerator = ToneGenerator(AudioManager.STREAM_MUSIC, 100)
+                toneGenerator.startTone(metronomeTone)
+                toneGenerator.release()
+            },
+            0L,
+            calculateSleepDuration(bpm)
+        )
+
         return true
     }
 
     fun stop(): Boolean {
-        when (this.metronomeState) {
-            MetronomeState.OFF -> return false
-            MetronomeState.ON -> {
-                this.metronomeState = MetronomeState.OFF
-                this.metronome.cancel()
-                createNewTimer()
-            }
+        if (this.isOff()) {
+            return false
         }
+
+        this.metronomeState = MetronomeState.OFF
+        this.metronome.cancel()
+        createNewTimer()
+
         return true
     }
 
@@ -87,6 +92,7 @@ object Metronome {
         return this.metronomeState == MetronomeState.OFF
     }
 }
+
 
 class MainActivity : AppCompatActivity() {
 
@@ -102,9 +108,6 @@ class MainActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
-        val savedMetronomeState = savedInstanceState?.getCharSequence("metronomeState")
-        Metronome.metronomeState = if (savedMetronomeState != null && savedMetronomeState == "On") MetronomeState.ON else MetronomeState.OFF
-
         class RepetitiveUpdater : Runnable {
             override fun run() {
                 if (autoIncrement) {
@@ -118,13 +121,15 @@ class MainActivity : AppCompatActivity() {
         }
 
         currentBPM.setOnTouchListener {_, _ ->
+            logInfo("currentBPM.setOnTouchListener", "Setting cursor visible to true")
             currentBPM.isCursorVisible = true
+
             false
         }
 
         currentBPM.setOnEditorActionListener { _, keyCode: Int?, _ ->
-
             if (keyCode == EditorInfo.IME_ACTION_DONE) {
+                logInfo("currentBPM.setOnEditorActionListener", "Setting cursor visible to false")
                 currentBPM.isCursorVisible = false
             }
 
@@ -148,9 +153,9 @@ class MainActivity : AppCompatActivity() {
         })
 
         metronomeToggle.setOnCheckedChangeListener { _, isChecked ->
-            logInfo("metronomeToggle", "BEFORE metronomeState = ${Metronome.metronomeState}")
+            logInfo("metronomeToggle.setOnCheckedChangeListener", "BEFORE metronomeState = ${Metronome.metronomeState}")
             updateMetronomeStatus(isChecked)
-            logInfo("metronomeToggle" ,"AFTER metronomeState = ${Metronome.metronomeState}")
+            logInfo("metronomeToggle.setOnCheckedChangeListener" ,"AFTER metronomeState = ${Metronome.metronomeState}")
         }
 
         increaseBPM.setOnClickListener {
@@ -191,35 +196,18 @@ class MainActivity : AppCompatActivity() {
 
     }
 
-    override fun onStop() {
-        super.onStop()
-        Metronome.stop()
-        metronomeToggle.isChecked = false   // Quick fix to stop metronome from playing again
-    }
-
     private fun updateMetronomeStatus(turnOn: Boolean) {
+        logInfo("updateMetronomeStatus", "BEFORE metronomeState = ${Metronome.metronomeState}")
         if (turnOn) {
             val currentBpm = getCurrentBpm()
             if (currentBpm != null && checkBpmBounds(currentBpm)) {
-                startMetronome(currentBpm)
+                Metronome.start(currentBpm)
             }
         } else {
-            stopMetronome()
+            Metronome.stop()
         }
-    }
 
-    private fun startMetronome(bpm: BPM) {
-        logInfo("startMetronome", "BEFORE metronomeState = ${Metronome.metronomeState}")
-        Metronome.start(bpm)
-        logInfo("startMetronome", "AFTER metronomeState = ${Metronome.metronomeState}")
-
-        updateBpmButtons()
-    }
-
-    private fun stopMetronome() {
-        logInfo("stopMetronome", "BEFORE metronomeState = ${Metronome.metronomeState}")
-        Metronome.stop()
-        logInfo("stopMetronome", "AFTER metronomeState = ${Metronome.metronomeState}")
+        logInfo("updateMetronomeStatus", "AFTER metronomeState = ${Metronome.metronomeState}")
 
         updateBpmButtons()
     }
