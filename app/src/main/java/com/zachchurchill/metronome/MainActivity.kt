@@ -1,9 +1,5 @@
 package com.zachchurchill.metronome
 
-import android.media.AudioManager
-import android.media.ToneGenerator
-import java.util.Timer
-import kotlin.concurrent.timerTask
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
 import android.os.Handler
@@ -14,83 +10,6 @@ import android.view.inputmethod.EditorInfo
 import android.widget.EditText
 
 import kotlinx.android.synthetic.main.activity_main.*
-
-
-typealias BPM = Long
-
-const val REPEAT_DELAY_FOR_LONG_CLICKS: Long = 50L
-const val METRONOME_LOWER_BOUND: BPM = 40
-const val METRONOME_UPPER_BOUND: BPM = 210
-
-enum class MetronomeState {
-    OFF,
-    ON
-}
-
-
-object Metronome {
-    private const val METRONOME_TONE = ToneGenerator.TONE_PROP_BEEP
-    private const val MILLISECONDS_IN_SECOND: Int = 1000
-    private const val SECONDS_IN_MINUTE: Int = 60
-
-    private var metronomeState: MetronomeState
-    private var metronome: Timer
-
-    init {
-        metronome = Timer("metronome", true)
-        metronomeState = MetronomeState.OFF
-    }
-
-    private fun createNewTimer() {
-        if (this.isOff()) {
-            this.metronome = Timer("metronome", true)
-        }
-    }
-
-    private fun calculateSleepDuration(bpm: BPM): Long {
-        return (MILLISECONDS_IN_SECOND * (SECONDS_IN_MINUTE / bpm.toDouble())).toLong()
-    }
-
-    fun start(bpm: BPM): Boolean {
-        if (this.isOn()) {
-            return false
-        }
-
-        this.metronomeState = MetronomeState.ON
-        this.metronome.schedule(
-            timerTask {
-                val toneGenerator = ToneGenerator(AudioManager.STREAM_MUSIC, 100)
-                toneGenerator.startTone(METRONOME_TONE)
-                toneGenerator.release()
-            },
-            0L,
-            calculateSleepDuration(bpm)
-        )
-
-        return true
-    }
-
-    fun stop(): Boolean {
-        if (this.isOff()) {
-            return false
-        }
-
-        this.metronomeState = MetronomeState.OFF
-        this.metronome.cancel()
-        createNewTimer()
-
-        return true
-    }
-
-    fun isOn(): Boolean {
-        return this.metronomeState == MetronomeState.ON
-    }
-
-    fun isOff(): Boolean {
-        return this.metronomeState == MetronomeState.OFF
-    }
-}
-
 
 class MainActivity : AppCompatActivity() {
 
@@ -107,10 +26,10 @@ class MainActivity : AppCompatActivity() {
             override fun run() {
                 if (autoIncrement) {
                     updateBPM(true)
-                    repeatUpdateHandler.postDelayed(RepetitiveUpdater(), REPEAT_DELAY_FOR_LONG_CLICKS)
+                    repeatUpdateHandler.postDelayed(RepetitiveUpdater(), 50L)
                 } else if (autoDecrement) {
                     updateBPM(false)
-                    repeatUpdateHandler.postDelayed(RepetitiveUpdater(), REPEAT_DELAY_FOR_LONG_CLICKS)
+                    repeatUpdateHandler.postDelayed(RepetitiveUpdater(), 50L)
                 }
             }
         }
@@ -179,6 +98,8 @@ class MainActivity : AppCompatActivity() {
             false
         }
 
+        // Initializes buttons with correct tags
+        updateBpmButtons()
     }
 
     private fun updateMetronomeStatus(turnOn: Boolean) {
@@ -205,21 +126,23 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun checkBpmBounds(bpm: BPM): Boolean {
-        return (bpm in METRONOME_LOWER_BOUND..METRONOME_UPPER_BOUND)
+        return (bpm in Metronome.BPM_LOWER_THRESHOLD..Metronome.BPM_UPPER_THRESHOLD)
     }
 
     private fun showCurrentBpmError(showError: Boolean) {
-        currentBPM.error = if (showError) "BPM must be between $METRONOME_LOWER_BOUND and $METRONOME_UPPER_BOUND" else null
+        currentBPM.error = if (showError) "BPM must be between ${Metronome.BPM_LOWER_THRESHOLD} and ${Metronome.BPM_UPPER_THRESHOLD}" else null
     }
 
     private fun enableIncreaseBpm() {
         increaseBPM.isEnabled = true
         increaseBPM.setBackgroundResource(R.drawable.btn_dark_background)
+        increaseBPM.tag = R.drawable.btn_dark_background
     }
 
     private fun enableDecreaseBpm() {
         decreaseBPM.isEnabled = true
         decreaseBPM.setBackgroundResource(R.drawable.btn_dark_background)
+        decreaseBPM.tag = R.drawable.btn_dark_background
     }
 
     private fun enableCurrentBpm() {
@@ -232,9 +155,11 @@ class MainActivity : AppCompatActivity() {
         if (Metronome.isOn()) {
             metronomeToggle.setBackgroundResource(R.drawable.btn_toggled_on_background)
             metronomeToggle.setTextColor(getColor(R.color.black75Percent))
+            metronomeToggle.tag = R.drawable.btn_toggled_on_background
         } else {
             metronomeToggle.setBackgroundResource(R.drawable.btn_toggled_off_background)
             metronomeToggle.setTextColor(getColor(R.color.primaryTextColor))
+            metronomeToggle.tag = R.drawable.btn_toggled_off_background
         }
     }
 
@@ -242,12 +167,14 @@ class MainActivity : AppCompatActivity() {
         autoIncrement = false
         increaseBPM.isEnabled = false
         increaseBPM.setBackgroundResource(R.drawable.btn_disabled_background)
+        increaseBPM.tag = R.drawable.btn_disabled_background
     }
 
     private fun disableDecreaseBpm() {
         autoDecrement = false
         decreaseBPM.isEnabled = false
         decreaseBPM.setBackgroundResource(R.drawable.btn_disabled_background)
+        decreaseBPM.tag = R.drawable.btn_disabled_background
     }
 
     private fun disableCurrentBpm() {
@@ -259,6 +186,7 @@ class MainActivity : AppCompatActivity() {
         metronomeToggle.isEnabled = false
         metronomeToggle.setBackgroundResource(R.drawable.btn_toggled_disabled_background)
         metronomeToggle.setTextColor(getColor(R.color.primaryTextColor))
+        metronomeToggle.tag = R.drawable.btn_toggled_disabled_background
     }
 
     private fun updateBpmButtons() {
@@ -270,13 +198,13 @@ class MainActivity : AppCompatActivity() {
                 disableDecreaseBpm()
                 disableMetronomeToggle()
             }
-            currentBpm < METRONOME_LOWER_BOUND -> {
+            currentBpm < Metronome.BPM_LOWER_THRESHOLD -> {
                 enableIncreaseBpm()
 
                 disableDecreaseBpm()
                 disableMetronomeToggle()
             }
-            currentBpm == METRONOME_LOWER_BOUND -> {
+            currentBpm == Metronome.BPM_LOWER_THRESHOLD -> {
                 enableMetronomeToggle()
                 if (Metronome.isOff()) {
                     enableIncreaseBpm()
@@ -288,7 +216,7 @@ class MainActivity : AppCompatActivity() {
                     disableCurrentBpm()
                 }
             }
-            currentBpm < METRONOME_UPPER_BOUND -> {
+            currentBpm < Metronome.BPM_UPPER_THRESHOLD -> {
                 enableMetronomeToggle()
                 if (Metronome.isOff()) {
                     enableIncreaseBpm()
@@ -300,7 +228,7 @@ class MainActivity : AppCompatActivity() {
                     disableCurrentBpm()
                 }
             }
-            currentBpm == METRONOME_UPPER_BOUND -> {
+            currentBpm == Metronome.BPM_UPPER_THRESHOLD -> {
                 enableMetronomeToggle()
                 if (Metronome.isOff()) {
                     disableIncreaseBpm()
@@ -325,7 +253,7 @@ class MainActivity : AppCompatActivity() {
 
         if (currentBpm != null) {
             val newBpm = if (increase) currentBpm + 1 else currentBpm - 1
-            val allowUpdate = if (increase) newBpm <= METRONOME_UPPER_BOUND else newBpm >= METRONOME_LOWER_BOUND
+            val allowUpdate = if (increase) newBpm <= Metronome.BPM_UPPER_THRESHOLD else newBpm >= Metronome.BPM_LOWER_THRESHOLD
 
             if (allowUpdate) {
                 currentBPM.setText(newBpm.toString())
